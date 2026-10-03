@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { incidents } from "../src/data/incidents.js";
-import { beginReview, confirmAudit, getIncident, getReportStatusMessage, isValidReport, reviewSignal } from "../src/domain.js";
+import { beginReview, confirmAudit, getAuditDecisionMessage, getIncident, getReportStatusMessage, isValidReport, reviewSignal } from "../src/domain.js";
 
 test("ambiguous instruction creates a review signal, never a verdict", () => {
   const incident = getIncident("aviso-02");
@@ -50,13 +50,17 @@ test("starting a new report clears the prior auditor decision", () => {
 
 test("report status changes from pending to the confirmed decision and reason", () => {
   const report = { signal: { label: "Revisión humana necesaria", basis: "La opción necesita revisión." } };
-  assert.match(getReportStatusMessage(report, null), /^Revisión pendiente\./);
+  const closure = "Tu reporte fue recibido. Ya terminaste. La revisión corresponde al auditor; tú no necesitas confirmar ninguna decisión.";
+  assert.equal(getReportStatusMessage(report, null), closure);
 
   for (const decision of ["suspend", "retain"]) {
-    const message = getReportStatusMessage(report, { decision, reason: "Motivo de prueba" });
-    assert.match(message, decision === "suspend" ? /Dictamen suspendido/ : /Dictamen conservado/);
+    const auditDecision = { decision, reason: "Motivo de prueba" };
+    const message = getReportStatusMessage(report, auditDecision);
+    assert.match(message, new RegExp(closure));
+    assert.match(message, decision === "suspend" ? /Resultado de la revisión: suspendido/ : /Resultado de la revisión: conservado/);
     assert.match(message, /Motivo: Motivo de prueba/);
-    assert.doesNotMatch(message, /Revisión pendiente/);
+    assert.match(getAuditDecisionMessage(auditDecision), /Resultado de la revisión/);
+    assert.doesNotMatch(getAuditDecisionMessage(auditDecision), /Ya terminaste/);
   }
 });
 

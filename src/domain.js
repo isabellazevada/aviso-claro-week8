@@ -15,11 +15,16 @@ export function beginReview(state, report) {
 }
 
 export function getReportStatusMessage(report, decision) {
+  const received = "Tu reporte fue recibido. Ya terminaste. La revisión corresponde al auditor; tú no necesitas confirmar ninguna decisión.";
   if (decision) {
-    const label = decision.decision === "suspend" ? "Dictamen suspendido" : "Dictamen conservado";
-    return `${label}. Motivo: ${decision.reason}. Decisión ficticia, confirmada por auditor/a de demostración.`;
+    return `${received} ${getAuditDecisionMessage(decision)}`;
   }
-  return `Revisión pendiente. ${report.signal.label}. ${report.signal.basis} El reporte no cambia el dictamen hasta que el auditor/a de demostración confirme una decisión.`;
+  return received;
+}
+
+export function getAuditDecisionMessage(decision) {
+  const label = decision.decision === "suspend" ? "suspendido" : "conservado";
+  return `Resultado de la revisión: ${label}. Motivo: ${decision.reason}. Decisión ficticia, confirmada por auditor/a de demostración.`;
 }
 
 export function reviewSignal(incident, reasonId) {

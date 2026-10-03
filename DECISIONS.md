@@ -26,8 +26,8 @@ Actualizado: 3 de octubre de 2026. Estado: prototipo local de demostración; no 
 
 Runtime temporal Node v22.16.0 en `/tmp`; no se instaló globalmente. `npm ci` instaló 16 paquetes y reportó cero vulnerabilidades en 17 paquetes auditados.
 
-- `npm test`: 8/8 pruebas aprobadas después de la corrección, incluida la transición de estado pendiente a decisión de suspensión/conservación con motivo.
-- `npm run build`: compilación Vite v7.3.6 aprobada después de la corrección; genera `dist/` local. No hay segundo deployment todavía. Detalles y reproducción en [docs/TEST_LOG.md](docs/TEST_LOG.md).
+- `npm test`: 8/8 pruebas aprobadas después de los cambios de flujo, incluida la comprobación del mensaje exacto de cierre y ambos resultados con motivo.
+- `npm run build`: compilación Vite v7.3.6 aprobada; genera `dist/` local. Navegador comprobó cierre del paciente, retorno al caso correcto, mensajes separados por rol, suspensión a 320 px y recuperación del error al cambiar solo la decisión. No hay retest de persona ni segundo deployment todavía. Detalles en [docs/TEST_LOG.md](docs/TEST_LOG.md) y [docs/PERSONA_LOG.md](docs/PERSONA_LOG.md).
 - Se ejecutó de extremo a extremo `npm ci && npm test && npm run build`, igual que en Vercel. La configuración fija Node 22, `npm ci`, test antes de compilar, `dist` y cabeceras HTTP; no equivale a validar un deployment real. Pasos en [DEPLOYMENT.md](DEPLOYMENT.md).
 - Navegador a 390 px: flujo de reporte urgente → revisión → suspensión con motivo; se vio la corrección pendiente de 24 horas; 0 px de desbordamiento horizontal, 0 campos de texto/archivo y 0 errores de página.
 - Navegador a 320 px: reporte sin sustento no pudo suspender; se conservó con motivo; el formulario aceptó la selección corregida; 0 px de desbordamiento horizontal.
@@ -52,4 +52,4 @@ La prueba automatizada de inyección valida que valores no incluidos en la lista
 
 ## Siguiente paso
 
-El siguiente paso es completar el segundo deployment desde GitHub en Vercel y verificar el bloque actualizado tanto para suspensión como para conservación en la URL pública; registrar el resultado real en [docs/TEST_LOG.md](docs/TEST_LOG.md). En paralelo, pedir ratificación al equipo y al curso sobre el LLM simulado. Si no basta, decidir una integración local gratuita de Ollama antes de conectar cualquier modelo; mantener sin cambios la regla de que el auditor humano, nunca la IA, toma la decisión.
+Hacer el retest del perfil sintético en sesión limpia y regenerar capturas de un caso por secuencia; todavía no se ha hecho. Los hallazgos y limitaciones están en [docs/PERSONA_LOG.md](docs/PERSONA_LOG.md). Después, completar el segundo deployment desde GitHub en Vercel y verificar ambos roles en la URL pública; registrar resultados reales en [docs/TEST_LOG.md](docs/TEST_LOG.md). En paralelo, pedir ratificación al equipo y al curso sobre el LLM simulado. Si no basta, decidir una integración local gratuita de Ollama antes de conectar cualquier modelo; mantener sin cambios la regla de que el auditor humano, nunca la IA, toma la decisión.

@@ -65,8 +65,9 @@ h1 { max-width: 760px; margin-bottom: 12px; font: 700 3rem/1.05 Georgia, "Times 
 .next-action { margin-top: 12px; padding: 17px; border-radius: 4px; background: #f4dcd7; }
 .next-action .eyebrow { margin-bottom: 7px; color: #713a31; }
 .action-copy { margin-bottom: 0; font-size: 1.12rem; font-weight: 600; line-height: 1.5; }
-.update-row { display: flex; justify-content: space-between; gap: 16px; padding: 15px 2px; border-bottom: 1px solid var(--line); line-height: 1.4; }
+.update-row { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 16px; padding: 15px 2px; border-bottom: 1px solid var(--line); line-height: 1.4; }
 .update-row strong { text-align: right; }
+.update-note { flex-basis: 100%; color: var(--muted); line-height: 1.4; }
 .metrics { margin-top: 15px; }
 .metric-list { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px 12px; margin: 0; }
 .metric-list dt { color: var(--muted); font-size: .92rem; }
@@ -94,6 +95,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .text-button { padding: 5px 0; border: 0; background: transparent; color: #175536; font-weight: 700; text-decoration: underline; cursor: pointer; }
 .audit-panel { max-width: 780px; padding-top: 25px; }
 .audit-panel > .simulated-label { margin-bottom: 15px; }
+.audit-intro { max-width: 700px; color: var(--muted); line-height: 1.5; }
 .audit-report { background: var(--white); }
 .audit-report p { margin: 7px 0; line-height: 1.45; }
 .signal-label { display: inline-block; margin-top: 7px; color: #265b3d; }

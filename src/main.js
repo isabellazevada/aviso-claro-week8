@@ -1,6 +1,6 @@
 import DOMPurify from "dompurify";
 import { auditReasons, incidents, reportReasons } from "./data/incidents.js";
-import { beginReview, confirmAudit, getIncident, getReportStatusMessage, isValidReport, reviewSignal } from "./domain.js";
+import { beginReview, confirmAudit, getAuditDecisionMessage, getIncident, getReportStatusMessage, isValidReport, reviewSignal } from "./domain.js";
 
 const state = {
   view: "notice",
@@ -34,13 +34,13 @@ function render() {
   const intro = node("section", "intro");
   intro.append(node("p", "eyebrow", "Registro de avisos · CDMX ficticia"), node("h1", "", state.view === "audit" ? "Mesa de revisión" : "Entiende el aviso. Decide con calma."));
   intro.append(node("p", "intro-copy", state.view === "audit"
-    ? "Un reporte abre una revisión. La decisión siempre la confirma el auditor de demostración."
+    ? "Esta vista permite ensayar un rol distinto. Es solo una demostración y no es un paso para pacientes."
     : "Casos inventados para ensayar qué se sabe, qué no y cuál es el siguiente paso."));
   shell.append(intro);
 
   const tabs = node("nav", "view-tabs");
   tabs.setAttribute("aria-label", "Vistas de demostración");
-  tabs.append(tabButton("notice", "Avisos"), tabButton("audit", "Auditoría de demo"));
+  tabs.append(tabButton("notice", "Avisos"), tabButton("audit", "Auditoría · solo demostración"));
   shell.append(tabs);
 
   if (state.view === "audit") renderAudit(shell);
@@ -96,6 +96,7 @@ function renderNotice(shell, incident, noticeState) {
   article.append(action);
   const update = node("section", "update-row");
   update.append(node("span", "", "Próxima actualización"), node("strong", "", incident.nextUpdate));
+  update.append(node("small", "update-note", "Fecha para publicar información; no es una instrucción de esperar para actuar."));
   article.append(update);
   article.append(renderMetrics(incident.metrics));
   article.append(node("p", "evidence-note", incident.evidence));
@@ -175,9 +176,9 @@ function reportStatus() {
   const status = node("div", "report-status");
   status.setAttribute("role", "status");
   status.append(node("strong", "", "Reporte recibido en esta sesión"), node("p", "", getReportStatusMessage(state.report, state.auditDecision)));
-  const go = node("button", "text-button", "Abrir vista de auditor");
+  const go = node("button", "text-button", "Volver al aviso");
   go.type = "button";
-  go.addEventListener("click", () => { state.view = "audit"; render(); });
+  go.addEventListener("click", () => { state.view = "notice"; state.incidentId = state.report.incidentId; render(); });
   status.append(go);
   return status;
 }
@@ -185,6 +186,7 @@ function reportStatus() {
 function renderAudit(shell) {
   const panel = node("section", "audit-panel");
   panel.append(node("span", "simulated-label", "AUDITOR/A DE DEMOSTRACIÓN · NO ES UNA DECISIÓN REAL"));
+  panel.append(node("p", "audit-intro", "Aquí, “dictamen” significa el resultado de la revisión del aviso. Esta vista ensaya otro rol y no es un paso para pacientes."));
   if (!state.report) {
     panel.append(node("h2", "", "No hay un reporte en esta sesión"), node("p", "", "Puedes crear un reporte desde un aviso o cargar el caso de prueba sintético. No representa una denuncia real."));
     const sample = node("button", "button-secondary", "Cargar reporte sintético de prueba");
@@ -213,7 +215,7 @@ function renderAuditReport(panel) {
   reportCard.append(node("p", "audit-caveat", "La señal no decide ni suspende. El auditor debe revisar el aviso y confirmar una decisión con motivo."));
   panel.append(reportCard);
   if (state.auditDecision) {
-    const result = node("div", "audit-result", getReportStatusMessage(state.report, state.auditDecision));
+    const result = node("div", "audit-result", getAuditDecisionMessage(state.auditDecision));
     result.setAttribute("role", "status");
     panel.append(result, renderHistory(noticeState.history));
     return;
@@ -231,14 +233,16 @@ function renderAuditReport(panel) {
   auditReason.required = true;
   auditReason.append(new Option("Elige un motivo", ""));
   auditReasons.forEach((item) => auditReason.append(new Option(item.label, item.id)));
-  auditReason.addEventListener("change", () => auditReason.setCustomValidity(""));
+  const clearAuditValidation = () => auditReason.setCustomValidity("");
+  decision.addEventListener("change", clearAuditValidation);
+  auditReason.addEventListener("change", clearAuditValidation);
   reasonLabel.append(auditReason);
   controls.append(decisionLabel, reasonLabel, submitButton("Confirmar decisión de demostración", "button-primary"));
   controls.addEventListener("submit", (event) => {
     event.preventDefault();
     const result = confirmAudit(incident.id, state.report.reasonId, new FormData(controls).get("decision"), new FormData(controls).get("auditReason"));
     if (!result) {
-      controls.querySelector("select[name='auditReason']").setCustomValidity("El motivo debe corresponder con la decisión.");
+      auditReason.setCustomValidity("El motivo debe corresponder con la decisión.");
       controls.reportValidity();
       return;
     }
