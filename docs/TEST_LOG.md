@@ -49,3 +49,15 @@ La prueba automatizada verifica la función de estado usada por ambos bloques. L
 - Confirmé de nuevo: se guardó “Resultado de la revisión: suspendido” con el motivo esperado y el formulario se cerró.
 - La prueba `an incompatible audit choice can be corrected and then saved` cubre el rechazo y la llamada válida consecutiva a la regla de dominio.
 - Validación final: `npm test` pasó 9/9 y `npm run build` terminó correctamente con Vite v7.3.6; `git diff --check` no reportó problemas.
+
+## Integración LLM server-side
+
+- Pruebas directas del handler `/api/explain`: cubren allowlist de IDs, rechazo de campos extra, origen cruzado, payload malformado/grande (incluido stream que falsea `Content-Length`), falta de clave, falla del proveedor y rechazo de salida fuera del esquema estricto de tres campos. El adaptador de generación es falso en las pruebas; no se llamó a Google.
+- La prueba de la ruta de éxito confirma que el contexto pasado al adaptador no contiene `nextAction` ni `verdict`. Verifica el contrato local, no la salida ni disponibilidad de Gemini.
+- Navegador: intercepté `/api/explain` con una respuesta 503 de prueba; la UI mostró el error y “Alternativa fija · SIMULADA”. Después intercepté una respuesta estructurada de prueba; la UI mostró tres apartados bajo “Respuesta real del modelo · Google Gemini”. La acción y el resultado de revisión no cambiaron. Ambas fueron respuestas de prueba, no llamadas reales al proveedor.
+- Navegador: una respuesta de prueba con `<img onerror>` produjo cero imágenes bajo la explicación; la acción y el resultado del aviso permanecieron iguales.
+- No hay `GOOGLE_GENERATIVE_AI_API_KEY` en este entorno, por lo que la llamada real y su resultado no se han probado. Tras configurar la variable en Vercel, verificar desde el deployment y registrar el resultado real sin copiar la clave a logs.
+- `npm ci`: instaló 28 paquetes; cero vulnerabilidades reportadas en 29 paquetes auditados.
+- `npm test`: 15/15 pruebas aprobadas, incluidas las pruebas de seguridad/errores del endpoint.
+- `npm run build`: Vite v7.3.6 generó `dist/`; `git diff --check` pasó.
+- No se hizo una llamada real a Gemini porque este entorno no tiene `GOOGLE_GENERATIVE_AI_API_KEY`. El éxito browser y el generador de las pruebas son mocks, no inferencia real.

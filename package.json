@@ -12,7 +12,10 @@
     "test": "node --test"
   },
   "dependencies": {
-    "dompurify": "^3.2.6"
+    "@ai-sdk/google": "^4.0.87",
+    "ai": "^7.0.127",
+    "dompurify": "^3.2.6",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "vite": "^7.1.7"

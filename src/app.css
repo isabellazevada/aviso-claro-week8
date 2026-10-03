@@ -55,6 +55,13 @@ h1 { max-width: 760px; margin-bottom: 12px; font: 700 3rem/1.05 Georgia, "Times 
 .explanation { margin-bottom: 16px; padding: 16px 18px; border-left: 4px solid #669d79; background: var(--white); }
 .explanation p { margin: 10px 0 6px; font-size: 1.1rem; line-height: 1.5; }
 .explanation small { color: var(--muted); line-height: 1.4; }
+.explanation-part { margin-top: 12px; }
+.explanation-part strong { display: block; color: #315a42; }
+.explanation-part p { margin: 4px 0 0; }
+.model-label, .error-label { display: inline-flex; width: fit-content; border: 1px solid #9db9a2; border-radius: 3px; padding: 6px 9px; background: #e1efe3; color: #265b3d; font-size: .83rem; font-weight: 700; }
+.error-label { border-color: #d5a29a; background: var(--pink); color: #713a31; }
+.api-error { color: #713a31; }
+.explain-button { margin-top: 12px; }
 .fact-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .fact-block { padding: 16px; border-radius: 4px; background: #e1efe3; }
 .fact-block.uncertain { background: #f8edbd; }

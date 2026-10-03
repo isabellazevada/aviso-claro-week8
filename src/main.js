@@ -7,6 +7,7 @@ const state = {
   incidentId: incidents[0].id,
   report: null,
   auditDecision: null,
+  explanations: new Map(),
   notices: new Map(incidents.map((incident) => [incident.id, { verdict: incident.verdict, tone: incident.verdictTone, history: [...incident.history] }]))
 };
 
@@ -28,7 +29,7 @@ function render() {
   const brand = node("a", "brand", "Aviso Claro");
   brand.href = "#inicio";
   brand.addEventListener("click", (event) => { event.preventDefault(); state.view = "notice"; render(); });
-  header.append(brand, node("span", "demo-pill", "Todo es una simulación"));
+  header.append(brand, node("span", "demo-pill", "Datos y auditoría simulados"));
   shell.append(header);
 
   const intro = node("section", "intro");
@@ -81,11 +82,7 @@ function renderNotice(shell, incident, noticeState) {
   heading.append(badge);
   article.append(heading);
 
-  const explain = node("section", "explanation");
-  explain.append(node("span", "simulated-label", "Explicación automática · SIMULADA"));
-  explain.append(node("p", "", incident.summary));
-  explain.append(node("small", "", "Texto de ejemplo fijo. No se llamó a un modelo de IA ni se aprobaron instrucciones."));
-  article.append(explain);
+  article.append(renderExplanation(incident));
 
   const facts = node("div", "fact-grid");
   facts.append(factSection("Lo que se sabe", incident.known, "known"));
@@ -119,6 +116,94 @@ function factSection(title, items, tone) {
   items.forEach((item) => list.append(node("li", "", item)));
   section.append(list);
   return section;
+}
+
+function fixedExplanation(incident) {
+  return {
+    knownFacts: incident.known.join(" "),
+    uncertainties: incident.uncertain.join(" "),
+    concerningInstruction: incident.instructionRisk
+    ? incident.summary
+      : "El caso ficticio no incluye una instrucción preocupante específica."
+  };
+}
+
+function renderExplanationSections(section, explanation) {
+  [
+    ["Hechos conocidos", explanation.knownFacts],
+    ["Incertidumbres", explanation.uncertainties],
+    ["Instrucción preocupante", explanation.concerningInstruction]
+  ].forEach(([label, value]) => {
+    const part = node("div", "explanation-part");
+    part.append(node("strong", "", label), node("p", "", value));
+    section.append(part);
+  });
+}
+
+function renderExplanation(incident) {
+  const section = node("section", "explanation");
+  const result = state.explanations.get(incident.id);
+  section.setAttribute("aria-live", "polite");
+  section.setAttribute("aria-busy", String(result?.state === "loading"));
+
+  if (result?.state === "real") {
+    section.append(node("span", "model-label", "Respuesta real del modelo · Google Gemini"));
+    renderExplanationSections(section, result.explanation);
+    section.append(node("small", "", "El modelo solo explica los datos mostrados. Puede equivocarse y no decide ni modifica el resultado de la revisión ni la siguiente acción."));
+  } else if (result?.state === "error") {
+    section.append(node("span", "error-label", "No se obtuvo respuesta real del modelo"));
+    section.append(node("p", "api-error", result.error));
+    section.append(node("span", "simulated-label", "Alternativa fija · SIMULADA"));
+    renderExplanationSections(section, fixedExplanation(incident));
+    section.append(node("small", "", "La alternativa se construye con el caso ficticio; no es una respuesta del LLM."));
+  } else {
+    section.append(node("span", "simulated-label", "Explicación fija · SIMULADA"));
+    renderExplanationSections(section, fixedExplanation(incident));
+    section.append(node("small", "", "Texto preparado con datos ficticios. No es una respuesta del modelo."));
+  }
+
+  const loading = result?.state === "loading";
+  const button = node("button", "button-secondary explain-button", loading
+    ? "Consultando modelo…"
+    : result?.state === "real" ? "Pedir otra explicación" : "Pedir explicación al modelo");
+  button.type = "button";
+  button.disabled = loading;
+  button.addEventListener("click", () => requestExplanation(incident.id));
+  section.append(button);
+  return section;
+}
+
+async function requestExplanation(caseId) {
+  state.explanations.set(caseId, { state: "loading" });
+  render();
+
+  try {
+    const response = await fetch("/api/explain", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ caseId })
+    });
+    let body;
+    try {
+      body = await response.json();
+    } catch {
+      throw new Error(`El servicio de explicación devolvió una respuesta no válida (${response.status}).`);
+    }
+    if (!response.ok) throw new Error(body.error || `El servidor respondió con error ${response.status}.`);
+    const fields = ["knownFacts", "uncertainties", "concerningInstruction"];
+    if (body.source !== "model" || body.provider !== "Google Gemini" ||
+      !body.explanation || fields.some((field) => typeof body.explanation[field] !== "string") ||
+      Object.keys(body.explanation).some((field) => !fields.includes(field))) {
+      throw new Error("La respuesta del servidor no se pudo verificar como respuesta del modelo.");
+    }
+    state.explanations.set(caseId, { state: "real", explanation: body.explanation });
+  } catch (error) {
+    state.explanations.set(caseId, {
+      state: "error",
+      error: error instanceof Error ? error.message : "No se pudo conectar con el servicio de explicación."
+    });
+  }
+  render();
 }
 
 function renderMetrics(metrics) {
