@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { incidents } from "../src/data/incidents.js";
 import { beginReview, confirmAudit, getIncident, isValidReport, reviewSignal } from "../src/domain.js";
 
@@ -53,4 +54,17 @@ test("exactly three fictitious notices are published, with independent reach met
     assert.deepEqual(Object.keys(incident.metrics), ["sent", "delivered", "understood"]);
   }
   assert.equal(getIncident("aviso-02").history.some((entry) => entry.kind === "Reporte"), false);
+});
+
+test("Vercel configuration runs tests and serves the Vite output with restrictive headers", () => {
+  const config = JSON.parse(readFileSync(new URL("../vercel.json", import.meta.url), "utf8"));
+  const headers = config.headers[0].headers;
+  const headerValue = (name) => headers.find((header) => header.key === name)?.value;
+  assert.equal(config.framework, "vite");
+  assert.equal(config.installCommand, "npm ci");
+  assert.equal(config.buildCommand, "npm test && npm run build");
+  assert.equal(config.outputDirectory, "dist");
+  assert.match(headerValue("Content-Security-Policy"), /connect-src 'self'/);
+  assert.equal(headerValue("X-Content-Type-Options"), "nosniff");
+  assert.equal(headerValue("X-Frame-Options"), "DENY");
 });
