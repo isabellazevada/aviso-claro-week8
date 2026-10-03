@@ -1,0 +1,76 @@
+[
+  {
+    "id": "aviso-01",
+    "clinic": "Clínica Nube Clara (ficticia)",
+    "title": "Aviso con pasos concretos",
+    "verdict": "Claro en esta revisión",
+    "verdictTone": "good",
+    "summary": "Un enlace de resultados pudo verse sin iniciar sesión durante un periodo acotado.",
+    "known": [
+      "La clínica detectó el enlace expuesto el 2 de octubre de 2026.",
+      "El aviso inicial se publicó antes de la revisión de este registro.",
+      "El enlace ya no está disponible."
+    ],
+    "uncertain": ["No se puede confirmar quién abrió el enlace ni si alguien guardó una copia."],
+    "nextAction": "No reenvíes el enlace. Si recibes un mensaje que lo pide, no lo abras y consulta directamente el portal oficial de la clínica.",
+    "nextUpdate": "6 de octubre de 2026, 17:00 (plazo ficticio)",
+    "evidence": "La fecha de detección y la hora de cierre constan en el fixture de demostración.",
+    "metrics": { "sent": "Registrado (simulado)", "delivered": "Desconocido", "understood": "Desconocido" },
+    "history": [
+      { "date": "2 oct 2026 · 09:00", "kind": "Aviso", "text": "Aviso inicial publicado antes de la revisión (simulado)." },
+      { "date": "2 oct 2026 · 11:20", "kind": "Corrección", "text": "Se añadió que no puede confirmarse si hubo copias (simulado)." },
+      { "date": "6 oct 2026 · 17:00", "kind": "Plazo", "text": "Próxima actualización anunciada (simulada)." }
+    ],
+    "instructionRisk": false,
+    "evidenceMissing": false
+  },
+  {
+    "id": "aviso-02",
+    "clinic": "Clínica Faro Sur (ficticia)",
+    "title": "Instrucción que podría causar daño",
+    "verdict": "Vigente, bajo revisión de demostración",
+    "verdictTone": "warn",
+    "summary": "El aviso dice: “No hagas nada hasta la próxima semana”, aunque informa de un acceso no autorizado activo.",
+    "known": [
+      "El propio aviso ficticio informa de accesos no autorizados todavía activos.",
+      "El texto pide esperar una semana antes de actuar.",
+      "No hay una explicación de por qué esperar sería seguro."
+    ],
+    "uncertain": ["El fixture no confirma qué datos se consultaron ni cuántas personas pudieron verse afectadas."],
+    "nextAction": "No esperes por esta instrucción. Evita responder al mensaje y busca un canal oficial publicado por la clínica para pedir orientación urgente.",
+    "nextUpdate": "Hoy, 3 de octubre de 2026, 16:00 (plazo ficticio)",
+    "evidence": "El texto peligroso está incluido en el fixture. No es consejo médico ni una instrucción real.",
+    "metrics": { "sent": "Desconocido", "delivered": "Desconocido", "understood": "Desconocido" },
+    "history": [
+      { "date": "3 oct 2026 · 09:10", "kind": "Aviso", "text": "Aviso inicial emitido antes de la revisión (simulado)." },
+      { "date": "3 oct 2026 · 16:00", "kind": "Plazo", "text": "Revisar y publicar corrección dentro del mismo día de demostración." }
+    ],
+    "instructionRisk": true,
+    "evidenceMissing": false
+  },
+  {
+    "id": "aviso-03",
+    "clinic": "Clínica Patio Verde (ficticia)",
+    "title": "Evidencia insuficiente",
+    "verdict": "Oportunidad no verificable",
+    "verdictTone": "neutral",
+    "summary": "El aviso no incluye cuándo se detectó el incidente ni cuándo se informó a las personas.",
+    "known": [
+      "El aviso menciona un posible incidente, pero no incluye fechas comprobables.",
+      "No hay evidencia temporal suficiente para medir la oportunidad del aviso.",
+      "La ausencia de fechas no demuestra por sí sola que el aviso haya sido tardío."
+    ],
+    "uncertain": ["No se puede determinar cuándo empezó el incidente ni si el aviso llegó a sus destinatarios."],
+    "nextAction": "Trata cualquier mensaje inesperado con cautela. No compartas claves ni datos bancarios; consulta un canal oficial que ya conozcas.",
+    "nextUpdate": "7 de octubre de 2026, 12:00 (plazo ficticio)",
+    "evidence": "Faltan fechas y registros verificables; el resultado es no verificable, no puntual ni tardío.",
+    "metrics": { "sent": "Desconocido", "delivered": "Desconocido", "understood": "Desconocido" },
+    "history": [
+      { "date": "1 oct 2026 · hora desconocida", "kind": "Aviso", "text": "Se registra un aviso sin marca temporal verificable (simulado)." },
+      { "date": "3 oct 2026 · 12:00", "kind": "Decisión", "text": "Oportunidad no verificable por falta de evidencia temporal." },
+      { "date": "7 oct 2026 · 12:00", "kind": "Plazo", "text": "Solicitar evidencia agregada y publicar actualización (simulado)." }
+    ],
+    "instructionRisk": false,
+    "evidenceMissing": true
+  }
+]
