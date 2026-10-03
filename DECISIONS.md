@@ -26,8 +26,8 @@ Actualizado: 3 de octubre de 2026. Estado: prototipo local de demostración; no 
 
 Runtime temporal Node v22.16.0 en `/tmp`; no se instaló globalmente. `npm ci` instaló 16 paquetes y reportó cero vulnerabilidades en 17 paquetes auditados.
 
-- `npm test`: 8/8 pruebas aprobadas después de los cambios de flujo, incluida la comprobación del mensaje exacto de cierre y ambos resultados con motivo.
-- `npm run build`: compilación Vite v7.3.6 aprobada; genera `dist/` local. Navegador comprobó cierre del paciente, retorno al caso correcto, mensajes separados por rol, suspensión a 320 px y recuperación del error al cambiar solo la decisión. No hay retest de persona ni segundo deployment todavía. Detalles en [docs/TEST_LOG.md](docs/TEST_LOG.md) y [docs/PERSONA_LOG.md](docs/PERSONA_LOG.md).
+- `npm test`: 9/9 pruebas aprobadas; incluye rechazo de combinación incompatible seguido por aceptación de la suspensión válida.
+- `npm run build`: Vite v7.3.6 aprobó la compilación y generó `dist/`. También pasó `git diff --check`. La reproducción de navegador y el detalle de pruebas están en [docs/TEST_LOG.md](docs/TEST_LOG.md); no hay segundo deployment todavía.
 - Se ejecutó de extremo a extremo `npm ci && npm test && npm run build`, igual que en Vercel. La configuración fija Node 22, `npm ci`, test antes de compilar, `dist` y cabeceras HTTP; no equivale a validar un deployment real. Pasos en [DEPLOYMENT.md](DEPLOYMENT.md).
 - Navegador a 390 px: flujo de reporte urgente → revisión → suspensión con motivo; se vio la corrección pendiente de 24 horas; 0 px de desbordamiento horizontal, 0 campos de texto/archivo y 0 errores de página.
 - Navegador a 320 px: reporte sin sustento no pudo suspender; se conservó con motivo; el formulario aceptó la selección corregida; 0 px de desbordamiento horizontal.
@@ -52,4 +52,4 @@ La prueba automatizada de inyección valida que valores no incluidos en la lista
 
 ## Siguiente paso
 
-La evaluación sintética de capturas del 3 de octubre resolvió la confusión de roles en ese alcance limitado; no fue entrevista ni prueba interactiva. Pendientes independientes: completar/validar los casos de error del auditor y satisfacer el requisito de LLM real con una integración aprobada. También queda pendiente regenerar capturas limpias, un caso por secuencia. Ver [docs/PERSONA_LOG.md](docs/PERSONA_LOG.md). Mantener sin cambios la regla de que el auditor humano, nunca la IA, toma la decisión.
+La evaluación sintética de capturas del 3 de octubre resolvió la confusión de roles en ese alcance limitado; no fue entrevista ni prueba interactiva. La secuencia inválida → válida del auditor se reprodujo en navegador y está cubierta por una prueba automatizada. Pendientes independientes: satisfacer el requisito de LLM real con una integración aprobada y regenerar capturas limpias, un caso por secuencia. Ver [docs/PERSONA_LOG.md](docs/PERSONA_LOG.md). Mantener sin cambios la regla de que el auditor humano, nunca la IA, toma la decisión.

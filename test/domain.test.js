@@ -33,6 +33,17 @@ test("unsupported report has no asserted harm and can only be retained with a re
   assert.equal(confirmAudit(incident.id, "unsupported-claim", "suspend", "no-material-issue"), null);
 });
 
+test("an incompatible audit choice can be corrected and then saved", () => {
+  const incident = getIncident("aviso-02");
+
+  assert.equal(confirmAudit(incident.id, "unsafe-instruction", "retain", "unsafe-delay"), null);
+  assert.equal(incident.verdict, "Vigente, bajo revisión de demostración");
+
+  const corrected = confirmAudit(incident.id, "unsafe-instruction", "suspend", "unsafe-delay");
+  assert.equal(corrected.decision, "suspend");
+  assert.equal(corrected.reason, "La espera indicada puede retrasar una acción urgente");
+});
+
 test("injection attempts and free-form report values are rejected", () => {
   const payload = "<img src=x onerror=alert(1)>";
   assert.equal(isValidReport("aviso-01", payload), false);

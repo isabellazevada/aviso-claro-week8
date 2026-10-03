@@ -35,8 +35,17 @@ La prueba automatizada verifica la función de estado usada por ambos bloques. L
 - Se quitó el enlace al rol auditor del bloque de paciente. El mensaje exacto confirma que el reporte fue recibido, que la persona terminó y que no debe confirmar decisiones; el botón vuelve al aviso.
 - Auditoría queda como pestaña separada “Auditoría · solo demostración”, con una explicación explícita de que es otro rol y no un paso para pacientes.
 - Se explica “dictamen” como “resultado de la revisión del aviso” y se aclara junto a la próxima actualización que la fecha no es una instrucción de esperar.
-- Se corrigió la validación obsoleta del formulario: cambiar la decisión o el motivo ahora limpia el error anterior. En navegador, seleccioné suspensión con motivo incompatible, vi el error, cambié solo la decisión a conservación y confirmé sin cambiar el motivo; el error desapareció y se mostró el resultado.
+- Se corrigió la validación obsoleta del formulario: cambiar la decisión o el motivo ahora limpia el error anterior. En la verificación solicitada, seleccioné “Conservar el dictamen” con el motivo urgente incompatible, vi el error, cambié solo la decisión a “Suspender el dictamen” y confirmé con el mismo motivo; el error desapareció y se mostró el resultado.
 - Navegador a 390 px: el mensaje de paciente fue el texto de cierre solicitado, el único botón del bloque fue “Volver al aviso”, y la auditoría quedó en una pestaña separada con explicación de rol. Se vieron la definición de “dictamen” y la aclaración de la fecha de actualización. Tras suspender, auditoría mostró resultado/motivo sin texto dirigido a pacientes; al volver a Avisos, el mensaje público añadió el resultado/motivo. Sin errores JS ni scroll horizontal.
 - Navegador a 320 px: “Volver al aviso” retornó al caso peligroso correcto; después se pudo ensayar su suspensión en la pestaña auditora. No hubo desbordamiento horizontal.
 - Capturas reportadas como mezclas de casos se registran separadas de problemas de interfaz en [PERSONA_LOG.md](PERSONA_LOG.md). El reporte no especifica qué capturas/casos; no se inventa esa atribución y deberán regenerarse desde sesiones limpias.
 - No se hizo entrevista real ni retest de Laura sintética; las comprobaciones técnicas automatizadas y manuales no representan ese retest.
+
+## Verificación de recuperación de validación
+
+- Desde el aviso peligroso envié “La instrucción podría retrasar una acción urgente”.
+- En auditoría elegí “Conservar el dictamen” + “La espera indicada puede retrasar una acción urgente” y confirmé. El navegador mostró “El motivo debe corresponder a la decisión.”; la decisión no se guardó.
+- Cambié la decisión a “Suspender el dictamen” manteniendo el motivo. El mensaje de validación quedó vacío.
+- Confirmé de nuevo: se guardó “Resultado de la revisión: suspendido” con el motivo esperado y el formulario se cerró.
+- La prueba `an incompatible audit choice can be corrected and then saved` cubre el rechazo y la llamada válida consecutiva a la regla de dominio.
+- Validación final: `npm test` pasó 9/9 y `npm run build` terminó correctamente con Vite v7.3.6; `git diff --check` no reportó problemas.
