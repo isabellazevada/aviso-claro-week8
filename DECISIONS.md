@@ -7,7 +7,7 @@ Actualizado: 3 de octubre de 2026. Estado: prototipo local de demostración; no 
 - Interfaz: HTML, CSS y JavaScript sin framework; Vite para desarrollo y compilación local.
 - Datos: tres fixtures ficticios en `src/data/incidents.json`; motivos de reporte y auditoría como opciones cerradas.
 - Seguridad: DOMPurify empaquetado localmente, renderizado como texto, CSP restrictiva, sin formularios de texto/archivos, sin persistencia y sin llamadas de red de la aplicación.
-- LLM: **simulado**. La explicación fija aparece marcada como simulada; no se llama a un modelo, no aprueba dictámenes y no se envían prompts. Una futura opción gratuita sería un modelo local mediante Ollama, tras revisar licencia, calidad y operación. Esa integración no existe en este prototipo; queda pendiente confirmar si la simulación satisface el requisito académico de LLM.
+- LLM: **simulado; requisito de LLM real pendiente**. La explicación fija aparece marcada como simulada; no se llama a un modelo, no aprueba dictámenes y no se envían prompts. Una posible opción gratuita es un modelo local mediante Ollama, tras revisar licencia, calidad y operación. La integración real y su aprobación académica siguen pendientes.
 - Secretos: no hay claves ni API externa configurada. No introducir claves en frontend.
 - Publicación: preparada para Vercel Hobby, sin despliegue. `vercel.json` publica `dist/`, ejecuta tests/build y fija cabeceras HTTP de seguridad. No se creó URL pública ni se hicieron deployments.
 
@@ -52,4 +52,4 @@ La prueba automatizada de inyección valida que valores no incluidos en la lista
 
 ## Siguiente paso
 
-Hacer el retest del perfil sintético en sesión limpia y regenerar capturas de un caso por secuencia; todavía no se ha hecho. Los hallazgos y limitaciones están en [docs/PERSONA_LOG.md](docs/PERSONA_LOG.md). Después, completar el segundo deployment desde GitHub en Vercel y verificar ambos roles en la URL pública; registrar resultados reales en [docs/TEST_LOG.md](docs/TEST_LOG.md). En paralelo, pedir ratificación al equipo y al curso sobre el LLM simulado. Si no basta, decidir una integración local gratuita de Ollama antes de conectar cualquier modelo; mantener sin cambios la regla de que el auditor humano, nunca la IA, toma la decisión.
+La evaluación sintética de capturas del 3 de octubre resolvió la confusión de roles en ese alcance limitado; no fue entrevista ni prueba interactiva. Pendientes independientes: completar/validar los casos de error del auditor y satisfacer el requisito de LLM real con una integración aprobada. También queda pendiente regenerar capturas limpias, un caso por secuencia. Ver [docs/PERSONA_LOG.md](docs/PERSONA_LOG.md). Mantener sin cambios la regla de que el auditor humano, nunca la IA, toma la decisión.
