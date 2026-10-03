@@ -14,6 +14,14 @@ export function beginReview(state, report) {
   return state;
 }
 
+export function getReportStatusMessage(report, decision) {
+  if (decision) {
+    const label = decision.decision === "suspend" ? "Dictamen suspendido" : "Dictamen conservado";
+    return `${label}. Motivo: ${decision.reason}. Decisión ficticia, confirmada por auditor/a de demostración.`;
+  }
+  return `Revisión pendiente. ${report.signal.label}. ${report.signal.basis} El reporte no cambia el dictamen hasta que el auditor/a de demostración confirme una decisión.`;
+}
+
 export function reviewSignal(incident, reasonId) {
   if (!incident || !reportReasons.some((reason) => reason.id === reasonId)) {
     return { plausible: false, label: "Opción no válida", basis: "El reporte debe usar una opción permitida." };
@@ -25,12 +33,12 @@ export function reviewSignal(incident, reasonId) {
     return { plausible: true, label: "Revisión prioritaria sugerida", basis: "El texto del aviso contiene una instrucción de espera ante un acceso activo." };
   }
   if (reasonId === "missing-evidence" && incident.evidenceMissing) {
-    return { plausible: true, label: "Evidencia faltante confirmada", basis: "El fixture no contiene fechas verificables." };
+    return { plausible: true, label: "Evidencia faltante confirmada", basis: "El caso ficticio no contiene fechas verificables." };
   }
   if (reasonId === "ambiguous") {
     return { plausible: null, label: "Revisión humana necesaria", basis: "La selección por sí sola no confirma que el aviso sea ambiguo." };
   }
-  return { plausible: false, label: "No se confirma plausibilidad", basis: "La opción y la evidencia del fixture no coinciden." };
+  return { plausible: false, label: "No se confirma plausibilidad", basis: "La opción y la evidencia del caso ficticio no coinciden." };
 }
 
 export function confirmAudit(incidentId, reportReasonId, decision, reasonId) {

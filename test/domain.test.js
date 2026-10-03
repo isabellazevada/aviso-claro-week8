@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { incidents } from "../src/data/incidents.js";
-import { beginReview, confirmAudit, getIncident, isValidReport, reviewSignal } from "../src/domain.js";
+import { beginReview, confirmAudit, getIncident, getReportStatusMessage, isValidReport, reviewSignal } from "../src/domain.js";
 
 test("ambiguous instruction creates a review signal, never a verdict", () => {
   const incident = getIncident("aviso-02");
@@ -42,10 +42,22 @@ test("injection attempts and free-form report values are rejected", () => {
 });
 
 test("starting a new report clears the prior auditor decision", () => {
-  const state = { report: { incidentId: "aviso-01" }, auditDecision: { message: "Decisión previa" } };
+  const state = { report: { incidentId: "aviso-01" }, auditDecision: { decision: "suspend", reason: "Decisión previa" } };
   beginReview(state, { incidentId: "aviso-02", reasonId: "unsafe-instruction" });
   assert.equal(state.report.incidentId, "aviso-02");
   assert.equal(state.auditDecision, null);
+});
+
+test("report status changes from pending to the confirmed decision and reason", () => {
+  const report = { signal: { label: "Revisión humana necesaria", basis: "La opción necesita revisión." } };
+  assert.match(getReportStatusMessage(report, null), /^Revisión pendiente\./);
+
+  for (const decision of ["suspend", "retain"]) {
+    const message = getReportStatusMessage(report, { decision, reason: "Motivo de prueba" });
+    assert.match(message, decision === "suspend" ? /Dictamen suspendido/ : /Dictamen conservado/);
+    assert.match(message, /Motivo: Motivo de prueba/);
+    assert.doesNotMatch(message, /Revisión pendiente/);
+  }
 });
 
 test("exactly three fictitious notices are published, with independent reach metrics", () => {

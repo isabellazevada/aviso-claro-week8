@@ -14,7 +14,7 @@
     "uncertain": ["No se puede confirmar quién abrió el enlace ni si alguien guardó una copia."],
     "nextAction": "No reenvíes el enlace. Si recibes un mensaje que lo pide, no lo abras y consulta directamente el portal oficial de la clínica.",
     "nextUpdate": "6 de octubre de 2026, 17:00 (plazo ficticio)",
-    "evidence": "La fecha de detección y la hora de cierre constan en el fixture de demostración.",
+    "evidence": "La fecha de detección y la hora de cierre constan en el caso ficticio de demostración.",
     "metrics": { "sent": "Registrado (simulado)", "delivered": "Desconocido", "understood": "Desconocido" },
     "history": [
       { "date": "2 oct 2026 · 09:00", "kind": "Aviso", "text": "Aviso inicial publicado antes de la revisión (simulado)." },
@@ -36,10 +36,10 @@
       "El texto pide esperar una semana antes de actuar.",
       "No hay una explicación de por qué esperar sería seguro."
     ],
-    "uncertain": ["El fixture no confirma qué datos se consultaron ni cuántas personas pudieron verse afectadas."],
+    "uncertain": ["El caso ficticio no confirma qué datos se consultaron ni cuántas personas pudieron verse afectadas."],
     "nextAction": "No esperes por esta instrucción. Evita responder al mensaje y busca un canal oficial publicado por la clínica para pedir orientación urgente.",
     "nextUpdate": "Hoy, 3 de octubre de 2026, 16:00 (plazo ficticio)",
-    "evidence": "El texto peligroso está incluido en el fixture. No es consejo médico ni una instrucción real.",
+    "evidence": "El texto peligroso está incluido en el caso ficticio. No es consejo médico ni una instrucción real.",
     "metrics": { "sent": "Desconocido", "delivered": "Desconocido", "understood": "Desconocido" },
     "history": [
       { "date": "3 oct 2026 · 09:10", "kind": "Aviso", "text": "Aviso inicial emitido antes de la revisión (simulado)." },

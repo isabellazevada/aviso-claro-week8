@@ -1,6 +1,6 @@
 import DOMPurify from "dompurify";
 import { auditReasons, incidents, reportReasons } from "./data/incidents.js";
-import { beginReview, confirmAudit, getIncident, isValidReport, reviewSignal } from "./domain.js";
+import { beginReview, confirmAudit, getIncident, getReportStatusMessage, isValidReport, reviewSignal } from "./domain.js";
 
 const state = {
   view: "notice",
@@ -174,7 +174,7 @@ function reportForm(incident) {
 function reportStatus() {
   const status = node("div", "report-status");
   status.setAttribute("role", "status");
-  status.append(node("strong", "", "Reporte recibido en esta sesión"), node("p", "", `${state.report.signal.label}. ${state.report.signal.basis} Esto solo orienta la revisión; no cambia el dictamen.`));
+  status.append(node("strong", "", "Reporte recibido en esta sesión"), node("p", "", getReportStatusMessage(state.report, state.auditDecision)));
   const go = node("button", "text-button", "Abrir vista de auditor");
   go.type = "button";
   go.addEventListener("click", () => { state.view = "audit"; render(); });
@@ -191,7 +191,7 @@ function renderAudit(shell) {
     sample.type = "button";
     sample.addEventListener("click", () => {
       const incident = getIncident("aviso-02");
-      beginReview(state, { incidentId: incident.id, reasonId: "unsafe-instruction", signal: reviewSignal(incident, "unsafe-instruction"), time: "3 oct 2026 · fixture" });
+      beginReview(state, { incidentId: incident.id, reasonId: "unsafe-instruction", signal: reviewSignal(incident, "unsafe-instruction"), time: "Caso ficticio de prueba" });
       state.notices.get(incident.id).history.push({ date: state.report.time, kind: "Reporte", text: "Reporte sintético cargado para probar revisión humana." });
       render();
     });
@@ -213,7 +213,7 @@ function renderAuditReport(panel) {
   reportCard.append(node("p", "audit-caveat", "La señal no decide ni suspende. El auditor debe revisar el aviso y confirmar una decisión con motivo."));
   panel.append(reportCard);
   if (state.auditDecision) {
-    const result = node("div", "audit-result", state.auditDecision.message);
+    const result = node("div", "audit-result", getReportStatusMessage(state.report, state.auditDecision));
     result.setAttribute("role", "status");
     panel.append(result, renderHistory(noticeState.history));
     return;
@@ -243,7 +243,6 @@ function renderAuditReport(panel) {
       return;
     }
     const decisionText = result.decision === "suspend" ? "Dictamen suspendido" : "Dictamen conservado";
-    const message = `${decisionText}. Motivo: ${result.reason}. Decisión ficticia, confirmada por auditor/a de demostración.`;
     if (result.decision === "suspend") {
       noticeState.verdict = "Suspendido · corrección pendiente";
       noticeState.tone = "warn";
@@ -252,7 +251,7 @@ function renderAuditReport(panel) {
     } else {
       noticeState.history.push({ date: "3 oct 2026 · decisión de demo", kind: "Decisión", text: `${decisionText}: ${result.reason}. Auditor/a de demostración.` });
     }
-    state.auditDecision = { message };
+    state.auditDecision = { decision: result.decision, reason: result.reason };
     render();
   });
   panel.append(controls);
