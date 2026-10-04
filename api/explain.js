@@ -1,5 +1,5 @@
 import { createGoogle } from "@ai-sdk/google";
-import { generateText, Output } from "ai";
+import { generateText, NoObjectGeneratedError, NoOutputGeneratedError, Output } from "ai";
 import { z } from "zod";
 import { incidents } from "../src/data/incidents.js";
 
@@ -8,6 +8,12 @@ export const MAX_REQUEST_BYTES = 1024;
 
 const caseIds = incidents.map((incident) => incident.id);
 const requestSchema = z.object({ caseId: z.enum(caseIds) }).strict();
+export const providerExplanationSchema = z.object({
+  knownFacts: z.string().describe("Explica solo hechos explícitos en los datos del caso."),
+  uncertainties: z.string().describe("Indica qué información sigue sin confirmarse."),
+  concerningInstruction: z.string().describe("Explica la instrucción preocupante del caso o indica que no hay una; no des recomendaciones ni una nueva acción.")
+}).strict();
+
 const explanationSchema = z.object({
   knownFacts: z.string().trim().min(3).max(360).describe("Explica solo hechos explícitos en los datos del caso."),
   uncertainties: z.string().trim().min(3).max(240).describe("Indica qué información sigue sin confirmarse."),
@@ -41,7 +47,7 @@ async function generateWithGoogle({ apiKey, context }) {
     model: google(EXPLAIN_MODEL),
     system: systemPrompt,
     prompt: JSON.stringify(context),
-    output: Output.object({ schema: explanationSchema }),
+    output: Output.object({ schema: providerExplanationSchema }),
     temperature: 0.2,
     maxOutputTokens: 220,
     abortSignal: AbortSignal.timeout(20_000)
@@ -90,7 +96,7 @@ export function classifyProviderFailure(error) {
   if ([name, causeName].some((value) => value === "TimeoutError" || value === "AbortError") || status === 408 || status === 504) {
     return { category: "timeout", providerHttpStatus: status };
   }
-  if (name === "AI_NoObjectGeneratedError" || name === "AI_NoOutputGeneratedError") {
+  if (NoObjectGeneratedError.isInstance(error) || NoOutputGeneratedError.isInstance(error)) {
     return { category: "response_validation", providerHttpStatus: status };
   }
   if (status === 401) return { category: "authentication", providerHttpStatus: status };
@@ -99,6 +105,43 @@ export function classifyProviderFailure(error) {
   if (status === 404) return { category: "model", providerHttpStatus: status };
   if (status === 400) return { category: "provider_request", providerHttpStatus: status };
   return { category: "provider_error", providerHttpStatus: status };
+}
+
+const validationCodeAllowlist = new Set([
+  "invalid_type",
+  "too_small",
+  "too_big",
+  "invalid_format",
+  "unrecognized_keys",
+  "invalid_value",
+  "custom"
+]);
+
+export function safeValidationCodes(error) {
+  const codes = new Set();
+  const pending = [error];
+  const visited = new Set();
+
+  while (pending.length > 0 && visited.size < 4) {
+    const current = pending.shift();
+    if (!current || (typeof current !== "object" && typeof current !== "function") || visited.has(current)) continue;
+    visited.add(current);
+
+    try {
+      if (Array.isArray(current.issues)) {
+        for (const issue of current.issues) {
+          if (typeof issue?.code === "string" && validationCodeAllowlist.has(issue.code)) {
+            codes.add(issue.code);
+          }
+        }
+      }
+      if (current.cause) pending.push(current.cause);
+    } catch {
+      continue;
+    }
+  }
+
+  return [...codes].sort();
 }
 
 function safeDiagnosticLog(logger, diagnostic) {
@@ -198,18 +241,28 @@ export function createExplainHandler({
       });
     } catch (error) {
       const diagnostic = classifyProviderFailure(error);
-      safeDiagnosticLog(logger, diagnostic);
+      const safeDiagnostic = {
+        stage: "sdk_generation",
+        ...diagnostic,
+        validationCodes: safeValidationCodes(error)
+      };
+      safeDiagnosticLog(logger, safeDiagnostic);
       return jsonResponse({
         error: "No se pudo obtener una explicación real del modelo. La explicación fija se muestra como simulada.",
-        diagnostic
+        diagnostic: safeDiagnostic
       }, 502);
     }
 
     let explanation;
     try {
       explanation = explanationSchema.parse(generated);
-    } catch {
-      const diagnostic = { category: "response_validation", providerHttpStatus: null };
+    } catch (error) {
+      const diagnostic = {
+        stage: "post_zod_validation",
+        category: "response_validation",
+        providerHttpStatus: null,
+        validationCodes: safeValidationCodes(error)
+      };
       safeDiagnosticLog(logger, diagnostic);
       return jsonResponse({
         error: "La respuesta del modelo no cumplió el formato esperado. La explicación fija se muestra como simulada.",

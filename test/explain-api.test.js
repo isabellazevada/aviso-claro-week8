@@ -1,6 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { classifyProviderFailure, createExplainHandler } from "../api/explain.js";
+import { NoObjectGeneratedError, TypeValidationError } from "ai";
+import { z } from "zod";
+import {
+  classifyProviderFailure,
+  createExplainHandler,
+  providerExplanationSchema
+} from "../api/explain.js";
 
 function post(body, { origin = "https://aviso.test" } = {}) {
   return new Request("https://aviso.test/api/explain", {
@@ -90,12 +96,19 @@ test("provider failure returns an API error, never a model-success label", async
 
   assert.equal(response.status, 502);
   assert.match(body.error, /no se pudo obtener/i);
-  assert.deepEqual(body.diagnostic, { category: "provider_error", providerHttpStatus: 503 });
+  assert.deepEqual(body.diagnostic, {
+    stage: "sdk_generation",
+    category: "provider_error",
+    providerHttpStatus: 503,
+    validationCodes: []
+  });
   assert.equal("source" in body, false);
   assert.deepEqual(logEntries, [{
     event: "llm_provider_failure",
+    stage: "sdk_generation",
     category: "provider_error",
-    providerHttpStatus: 503
+    providerHttpStatus: 503,
+    validationCodes: []
   }]);
   assert.doesNotMatch(JSON.stringify(logEntries), /test-only-placeholder|private\.example|secret-header/);
 });
@@ -116,12 +129,69 @@ test("provider output outside the three-field explanation schema is rejected", a
   const response = await handler(post({ caseId: "aviso-02" }));
   assert.equal(response.status, 502);
   const body = await response.json();
-  assert.deepEqual(body.diagnostic, { category: "response_validation", providerHttpStatus: null });
+  assert.deepEqual(body.diagnostic, {
+    stage: "post_zod_validation",
+    category: "response_validation",
+    providerHttpStatus: null,
+    validationCodes: ["unrecognized_keys"]
+  });
   assert.deepEqual(logEntries, [{
     event: "llm_provider_failure",
+    stage: "post_zod_validation",
     category: "response_validation",
-    providerHttpStatus: null
+    providerHttpStatus: null,
+    validationCodes: ["unrecognized_keys"]
   }]);
+});
+
+test("provider JSON Schema is compatible with Gemini string support and keeps all fields required", () => {
+  const jsonSchema = z.toJSONSchema(providerExplanationSchema);
+  const fields = ["knownFacts", "uncertainties", "concerningInstruction"];
+
+  assert.deepEqual(jsonSchema.required, fields);
+  assert.equal(jsonSchema.additionalProperties, false);
+  for (const field of fields) {
+    assert.equal(jsonSchema.properties[field].type, "string");
+    assert.equal("minLength" in jsonSchema.properties[field], false);
+    assert.equal("maxLength" in jsonSchema.properties[field], false);
+  }
+});
+
+test("AI SDK object-generation failure is separated from post-generation Zod validation", async () => {
+  const issues = z.object({ expected: z.string() }).safeParse({ expected: 1 }).error;
+  const typeError = TypeValidationError.wrap({ value: { expected: 1 }, cause: issues });
+  const sdkError = new NoObjectGeneratedError({ cause: typeError });
+  const sdkLogs = [];
+  const sdkHandler = createExplainHandler({
+    apiKey: "test-only-placeholder",
+    logger: (entry) => sdkLogs.push(entry),
+    generate: async () => { throw sdkError; }
+  });
+  const sdkResponse = await sdkHandler(post({ caseId: "aviso-02" }));
+  const sdkBody = await sdkResponse.json();
+
+  assert.equal(sdkBody.diagnostic.stage, "sdk_generation");
+  assert.equal(sdkBody.diagnostic.category, "response_validation");
+  assert.deepEqual(sdkBody.diagnostic.validationCodes, ["invalid_type"]);
+  assert.equal(sdkLogs[0].stage, "sdk_generation");
+
+  const zodLogs = [];
+  const zodHandler = createExplainHandler({
+    apiKey: "test-only-placeholder",
+    logger: (entry) => zodLogs.push(entry),
+    generate: async () => ({
+      knownFacts: "x",
+      uncertainties: "Se desconoce el alcance.",
+      concerningInstruction: "No hay instrucción adicional."
+    })
+  });
+  const zodResponse = await zodHandler(post({ caseId: "aviso-02" }));
+  const zodBody = await zodResponse.json();
+
+  assert.equal(zodBody.diagnostic.stage, "post_zod_validation");
+  assert.equal(zodBody.diagnostic.category, "response_validation");
+  assert.deepEqual(zodBody.diagnostic.validationCodes, ["too_small"]);
+  assert.equal(zodLogs[0].stage, "post_zod_validation");
 });
 
 test("provider failures map safe HTTP statuses and timeout names to categories", () => {
@@ -136,7 +206,7 @@ test("provider failures map safe HTTP statuses and timeout names to categories",
     [{ name: "AbortError" }, "timeout", null],
     [{ name: "AI_APICallError", cause: { name: "TimeoutError" } }, "timeout", null],
     [{ statusCode: 504 }, "timeout", 504],
-    [{ name: "AI_NoObjectGeneratedError", statusCode: 200 }, "response_validation", 200]
+    [new NoObjectGeneratedError({ response: undefined, usage: undefined, finishReason: undefined }), "response_validation", null]
   ];
 
   for (const [error, category, providerHttpStatus] of cases) {
@@ -160,11 +230,18 @@ test("timeout diagnostics log only the fixed category and nullable HTTP status",
   const body = await response.json();
 
   assert.equal(response.status, 502);
-  assert.deepEqual(body.diagnostic, { category: "timeout", providerHttpStatus: null });
+  assert.deepEqual(body.diagnostic, {
+    stage: "sdk_generation",
+    category: "timeout",
+    providerHttpStatus: null,
+    validationCodes: []
+  });
   assert.deepEqual(logEntries, [{
     event: "llm_provider_failure",
+    stage: "sdk_generation",
     category: "timeout",
-    providerHttpStatus: null
+    providerHttpStatus: null,
+    validationCodes: []
   }]);
   assert.doesNotMatch(JSON.stringify(logEntries), /sensitive|private\.example|credential|secret/);
 });
