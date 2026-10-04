@@ -70,17 +70,18 @@ Fecha de esta verificación: 4 de octubre de 2026.
 - Prueba de handler: estado 503 se devuelve como HTTP 502 con diagnóstico `{ category: "provider_error", providerHttpStatus: 503 }`; el evento de servidor registra únicamente `event`, `category`, `providerHttpStatus`.
 - Prueba de timeout envuelto en `cause`: clasifica como `timeout`, estado nulo, sin imprimir texto sensible, URL, header ni causa.
 - La respuesta que falla el esquema se clasifica `response_validation`; el cliente mantiene error visible y alternativa “SIMULADA”.
-- `npm test`: 17/17 pruebas aprobadas. `npm run build`: Vite v7.3.6 generó `dist/`. `git diff --check`: sin errores.
+- `npm test`: 21/21 pruebas aprobadas. `npm run build`: Vite v7.3.6 generó `dist/`. `git diff --check`: sin errores.
 - No se accedió a logs de un deployment real ni se hizo llamada real al proveedor en esta sesión. En producción, consultar Vercel Project → **Logs** (o el deployment → **Functions** → `/api/explain`) y filtrar `llm_provider_failure`.
 
 ## Diagnóstico de generación estructurada
 
-Fecha de revisión: 4 de octubre de 2026. El diagnóstico de producción aportado fue `category: response_validation` y `providerHttpStatus: null`.
+Fecha de revisión: 4 de octubre de 2026. El diagnóstico de producción aportado fue `stage: sdk_generation`, `category: response_validation`, `providerHttpStatus: null`, `validationCodes: []`. No incluía finishReason, presencia/longitud del texto ni causa, así que aún no identifica si la respuesta llegó vacía, truncada o no parseable.
 
-- Causa probable confirmada en código/documentación: el mismo Zod enviado a `Output.object` tenía `.trim().min().max()` en strings. La documentación de Gemini lista para strings `enum` y `format`, pero no `minLength`/`maxLength`; por eso esos límites no deben enviarse en el schema remoto. No se puede afirmar que esta sea la causa definitiva de la ejecución de producción hasta desplegar y observar un nuevo resultado.
-- Corrección mínima: el schema del proveedor usa solo los tres campos string requeridos y estricto; el Zod local posterior conserva trim y límites de longitud. El modelo, los campos y la clave no cambiaron.
-- `NoObjectGeneratedError`/`NoOutputGeneratedError` se diagnostican como `stage: sdk_generation`; el fallo del parseo local se marca `stage: post_zod_validation`. Ambos mantienen `category: response_validation` cuando aplica.
+- Hipótesis de incompatibilidad de schema: el mismo Zod enviado a `Output.object` tenía `.trim().min().max()` en strings. La documentación de Gemini lista para strings `enum` y `format`, pero no `minLength`/`maxLength`; por eso esos límites no deben enviarse en el schema remoto. No se puede afirmar que esta sea la causa definitiva de la ejecución de producción hasta desplegar y observar un nuevo resultado.
+- Corrección preventiva: la salida permitía hasta 840 caracteres agregados y el presupuesto era 220 tokens con razonamiento sin fijar. Se subió el máximo a 512 y se fijó `thinkingLevel: minimal`; no confirma que truncamiento fuera la causa. El modelo, los campos y la clave no cambiaron.
+- `NoObjectGeneratedError`/`NoOutputGeneratedError` se diagnostican como `stage: sdk_generation`, con finishReason allowlist, presencia/longitud del texto y causa tipada allowlist. El fallo del parseo local se marca `stage: post_zod_validation`. Ambos mantienen `category: response_validation` cuando aplica.
 - Los diagnósticos incluyen solo etapa, categoría, estado HTTP y códigos Zod allowlist (`invalid_type`, `too_small`, `too_big`, `invalid_format`, `unrecognized_keys`, `invalid_value`, `custom`). Nunca se registra el texto del modelo ni el error completo.
-- Tests: schema provider sin límites string remotos con los tres campos requeridos; error tipado SDK (`invalid_type`) frente a error Zod posterior (`too_small`); tests API previos de seguridad/secretos continúan.
-- Resultado de esta corrección: `npm test` pasó 19/19; `npm run build` pasó con Vite v7.3.6; `git diff --check` limpio.
+- Tests: schema provider sin límites string remotos con los tres campos requeridos; error tipado SDK (`invalid_type`) frente a error Zod posterior (`too_small`); finishReason `length`, salida vacía y causa allowlist sin exponer texto; presupuesto y thinking level. No se cambió a REST directa porque la traza recibida no distingue aún truncamiento de error de parseo/esquema; reconsiderar si una nueva traza muestra texto completo y `stop`.
+- Diagnóstico: ante `NoObjectGeneratedError`, registra finishReason allowlist, `textPresent`, `textLength` y causa tipada allowlist. No devuelve ni registra el texto generado. Tests cubren salida vacía con `stop` y salida parcial con `length`.
+- Resultado de esta revisión: `npm test` pasó 21/21; `npm run build` pasó con Vite v7.3.6; `git diff --check` limpio.
 - Resultado real post-deploy: pendiente. No se afirma que Gemini ya genere correctamente en producción.

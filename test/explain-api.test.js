@@ -5,6 +5,8 @@ import { z } from "zod";
 import {
   classifyProviderFailure,
   createExplainHandler,
+  GOOGLE_THINKING_LEVEL,
+  MAX_OUTPUT_TOKENS,
   providerExplanationSchema
 } from "../api/explain.js";
 
@@ -100,7 +102,12 @@ test("provider failure returns an API error, never a model-success label", async
     stage: "sdk_generation",
     category: "provider_error",
     providerHttpStatus: 503,
-    validationCodes: []
+    validationCodes: [],
+    sdkErrorType: "other",
+    finishReason: null,
+    textPresent: false,
+    textLength: 0,
+    causeName: "none"
   });
   assert.equal("source" in body, false);
   assert.deepEqual(logEntries, [{
@@ -108,7 +115,12 @@ test("provider failure returns an API error, never a model-success label", async
     stage: "sdk_generation",
     category: "provider_error",
     providerHttpStatus: 503,
-    validationCodes: []
+    validationCodes: [],
+    sdkErrorType: "other",
+    finishReason: null,
+    textPresent: false,
+    textLength: 0,
+    causeName: "none"
   }]);
   assert.doesNotMatch(JSON.stringify(logEntries), /test-only-placeholder|private\.example|secret-header/);
 });
@@ -157,10 +169,20 @@ test("provider JSON Schema is compatible with Gemini string support and keeps al
   }
 });
 
+test("generation keeps a bounded three-field output budget and minimal reasoning", () => {
+  assert.equal(MAX_OUTPUT_TOKENS, 512);
+  assert.equal(GOOGLE_THINKING_LEVEL, "minimal");
+});
+
 test("AI SDK object-generation failure is separated from post-generation Zod validation", async () => {
   const issues = z.object({ expected: z.string() }).safeParse({ expected: 1 }).error;
   const typeError = TypeValidationError.wrap({ value: { expected: 1 }, cause: issues });
-  const sdkError = new NoObjectGeneratedError({ cause: typeError });
+  const partialText = "{\"knownFacts\":\"Acceso activo\"";
+  const sdkError = new NoObjectGeneratedError({
+    cause: typeError,
+    text: partialText,
+    finishReason: "length"
+  });
   const sdkLogs = [];
   const sdkHandler = createExplainHandler({
     apiKey: "test-only-placeholder",
@@ -173,7 +195,14 @@ test("AI SDK object-generation failure is separated from post-generation Zod val
   assert.equal(sdkBody.diagnostic.stage, "sdk_generation");
   assert.equal(sdkBody.diagnostic.category, "response_validation");
   assert.deepEqual(sdkBody.diagnostic.validationCodes, ["invalid_type"]);
+  assert.equal(sdkBody.diagnostic.sdkErrorType, "no_object_generated");
+  assert.equal(sdkBody.diagnostic.finishReason, "length");
+  assert.equal(sdkBody.diagnostic.textPresent, true);
+  assert.equal(sdkBody.diagnostic.textLength, partialText.length);
+  assert.equal(sdkBody.diagnostic.causeName, "AI_TypeValidationError");
+  assert.equal(JSON.stringify(sdkBody).includes(partialText), false);
   assert.equal(sdkLogs[0].stage, "sdk_generation");
+  assert.equal(JSON.stringify(sdkLogs).includes(partialText), false);
 
   const zodLogs = [];
   const zodHandler = createExplainHandler({
@@ -192,6 +221,31 @@ test("AI SDK object-generation failure is separated from post-generation Zod val
   assert.equal(zodBody.diagnostic.category, "response_validation");
   assert.deepEqual(zodBody.diagnostic.validationCodes, ["too_small"]);
   assert.equal(zodLogs[0].stage, "post_zod_validation");
+});
+
+test("empty SDK object output is diagnosed without exposing generated content", async () => {
+  const partialText = "";
+  const sdkError = new NoObjectGeneratedError({
+    cause: new Error("unrecognized cause detail"),
+    text: partialText,
+    finishReason: "stop"
+  });
+  const logs = [];
+  const handler = createExplainHandler({
+    apiKey: "test-only-placeholder",
+    logger: (entry) => logs.push(entry),
+    generate: async () => { throw sdkError; }
+  });
+
+  const response = await handler(post({ caseId: "aviso-02" }));
+  const body = await response.json();
+
+  assert.equal(body.diagnostic.sdkErrorType, "no_object_generated");
+  assert.equal(body.diagnostic.finishReason, "stop");
+  assert.equal(body.diagnostic.textPresent, false);
+  assert.equal(body.diagnostic.textLength, 0);
+  assert.equal(body.diagnostic.causeName, "other");
+  assert.doesNotMatch(JSON.stringify(logs), /unrecognized cause detail/);
 });
 
 test("provider failures map safe HTTP statuses and timeout names to categories", () => {
@@ -234,14 +288,24 @@ test("timeout diagnostics log only the fixed category and nullable HTTP status",
     stage: "sdk_generation",
     category: "timeout",
     providerHttpStatus: null,
-    validationCodes: []
+    validationCodes: [],
+    sdkErrorType: "other",
+    finishReason: null,
+    textPresent: false,
+    textLength: 0,
+    causeName: "TimeoutError"
   });
   assert.deepEqual(logEntries, [{
     event: "llm_provider_failure",
     stage: "sdk_generation",
     category: "timeout",
     providerHttpStatus: null,
-    validationCodes: []
+    validationCodes: [],
+    sdkErrorType: "other",
+    finishReason: null,
+    textPresent: false,
+    textLength: 0,
+    causeName: "TimeoutError"
   }]);
   assert.doesNotMatch(JSON.stringify(logEntries), /sensitive|private\.example|credential|secret/);
 });

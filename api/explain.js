@@ -5,6 +5,8 @@ import { incidents } from "../src/data/incidents.js";
 
 export const EXPLAIN_MODEL = "gemini-3.8-flash";
 export const MAX_REQUEST_BYTES = 1024;
+export const MAX_OUTPUT_TOKENS = 512;
+export const GOOGLE_THINKING_LEVEL = "minimal";
 
 const caseIds = incidents.map((incident) => incident.id);
 const requestSchema = z.object({ caseId: z.enum(caseIds) }).strict();
@@ -49,7 +51,12 @@ async function generateWithGoogle({ apiKey, context }) {
     prompt: JSON.stringify(context),
     output: Output.object({ schema: providerExplanationSchema }),
     temperature: 0.2,
-    maxOutputTokens: 220,
+    maxOutputTokens: MAX_OUTPUT_TOKENS,
+    providerOptions: {
+      google: {
+        thinkingConfig: { thinkingLevel: GOOGLE_THINKING_LEVEL }
+      }
+    },
     abortSignal: AbortSignal.timeout(20_000)
   });
   return result.output;
@@ -86,6 +93,78 @@ function safeCauseName(error) {
   } catch {
     return "";
   }
+}
+
+const finishReasonAllowlist = new Set([
+  "stop",
+  "length",
+  "content-filter",
+  "tool-calls",
+  "error",
+  "other"
+]);
+
+const causeNameAllowlist = new Set([
+  "AI_TypeValidationError",
+  "AI_JSONParseError",
+  "AI_APICallError",
+  "AI_NoObjectGeneratedError",
+  "AI_NoOutputGeneratedError",
+  "TimeoutError",
+  "AbortError",
+  "SyntaxError"
+]);
+
+function safeCauseType(error) {
+  let current;
+  try {
+    current = error?.cause;
+  } catch {
+    return "other";
+  }
+  if (!current) return "none";
+
+  for (let depth = 0; depth < 4; depth += 1) {
+    let name = "";
+    try {
+      name = typeof current?.name === "string" ? current.name : "";
+      current = current?.cause;
+    } catch {
+      return "other";
+    }
+    if (causeNameAllowlist.has(name)) return name;
+    if (!current) break;
+  }
+  return "other";
+}
+
+function safeSdkGenerationDetails(error) {
+  if (!NoObjectGeneratedError.isInstance(error)) {
+    return {
+      sdkErrorType: NoOutputGeneratedError.isInstance(error) ? "no_output_generated" : "other",
+      finishReason: null,
+      textPresent: false,
+      textLength: 0,
+      causeName: safeCauseType(error)
+    };
+  }
+
+  let text;
+  let finishReason = null;
+  try {
+    text = error.text;
+    finishReason = finishReasonAllowlist.has(error.finishReason) ? error.finishReason : null;
+  } catch {
+    text = undefined;
+  }
+
+  return {
+    sdkErrorType: "no_object_generated",
+    finishReason,
+    textPresent: typeof text === "string" && text.length > 0,
+    textLength: typeof text === "string" ? text.length : 0,
+    causeName: safeCauseType(error)
+  };
 }
 
 export function classifyProviderFailure(error) {
@@ -244,7 +323,8 @@ export function createExplainHandler({
       const safeDiagnostic = {
         stage: "sdk_generation",
         ...diagnostic,
-        validationCodes: safeValidationCodes(error)
+        validationCodes: safeValidationCodes(error),
+        ...safeSdkGenerationDetails(error)
       };
       safeDiagnosticLog(logger, safeDiagnostic);
       return jsonResponse({
