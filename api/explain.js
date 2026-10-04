@@ -6,7 +6,7 @@ import { incidents } from "../src/data/incidents.js";
 export const EXPLAIN_MODEL = "gemini-3.8-flash";
 export const MAX_REQUEST_BYTES = 1024;
 export const MAX_OUTPUT_TOKENS = 512;
-export const GOOGLE_THINKING_LEVEL = "minimal";
+export const GOOGLE_THINKING_LEVEL = "low";
 
 const caseIds = incidents.map((incident) => incident.id);
 const requestSchema = z.object({ caseId: z.enum(caseIds) }).strict();

@@ -34,7 +34,7 @@ Si `POST /api/explain` responde 502, abre el proyecto en Vercel → **Logs** (o 
 
 El endpoint también devuelve ese diagnóstico seguro en el JSON 502 para facilitar depuración. El servidor no registra el error bruto, su mensaje/cause, clave, encabezados, URL ni cuerpo del proveedor. No cambies modelo a partir de un error sin verificar etapa/categoría; consulta Vercel Logs y corrige credenciales/permisos/cuota o el schema indicado.
 
-El presupuesto actual es 512 tokens de salida con `thinkingLevel: minimal`; es preventivo porque 220 tokens podían ser estrechos para JSON y razonamiento. No confirma que el fallo observado fuera truncamiento. Si la nueva traza muestra `finishReason: "length"`, texto presente y longitud, investigar truncamiento. Si muestra `stop` y texto presente pero `Output.object` falla, evaluar llamada REST directa con JSON estructurado y validación Zod local. El modelo no se cambia sin evidencia.
+El presupuesto actual es 512 tokens de salida con `thinkingLevel: low`; es preventivo porque 220 tokens podían ser estrechos para JSON y razonamiento. No confirma que el fallo observado fuera truncamiento. Si la nueva traza muestra `finishReason: "length"`, texto presente y longitud, investigar truncamiento. Si muestra `stop` y texto presente pero `Output.object` falla, evaluar llamada REST directa con JSON estructurado y validación Zod local. El modelo no se cambia sin evidencia.
 
 Para desarrollo, `npm run dev` sirve Vite pero no emula funciones `/api`; usa Vercel CLI (`vercel dev`) conectado al proyecto para probar la ruta allí. No publiques un `.env.local`; `.env*` está ignorado por Git. Sin clave, el endpoint devuelve error de configuración y la UI conserva solo la alternativa simulada.
 

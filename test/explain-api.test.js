@@ -169,9 +169,9 @@ test("provider JSON Schema is compatible with Gemini string support and keeps al
   }
 });
 
-test("generation keeps a bounded three-field output budget and minimal reasoning", () => {
+test("generation keeps a bounded three-field output budget and low reasoning", () => {
   assert.equal(MAX_OUTPUT_TOKENS, 512);
-  assert.equal(GOOGLE_THINKING_LEVEL, "minimal");
+  assert.equal(GOOGLE_THINKING_LEVEL, "low");
 });
 
 test("AI SDK object-generation failure is separated from post-generation Zod validation", async () => {
