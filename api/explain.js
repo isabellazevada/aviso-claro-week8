@@ -56,6 +56,59 @@ function jsonResponse(body, status) {
   });
 }
 
+function providerHttpStatus(error) {
+  try {
+    const status = error?.statusCode;
+    return Number.isInteger(status) && status >= 100 && status <= 599 ? status : null;
+  } catch {
+    return null;
+  }
+}
+
+function safeErrorName(error) {
+  try {
+    return typeof error?.name === "string" ? error.name : "";
+  } catch {
+    return "";
+  }
+}
+
+function safeCauseName(error) {
+  try {
+    const name = error?.cause?.name;
+    return typeof name === "string" ? name : "";
+  } catch {
+    return "";
+  }
+}
+
+export function classifyProviderFailure(error) {
+  const status = providerHttpStatus(error);
+  const name = safeErrorName(error);
+  const causeName = safeCauseName(error);
+
+  if ([name, causeName].some((value) => value === "TimeoutError" || value === "AbortError") || status === 408 || status === 504) {
+    return { category: "timeout", providerHttpStatus: status };
+  }
+  if (name === "AI_NoObjectGeneratedError" || name === "AI_NoOutputGeneratedError") {
+    return { category: "response_validation", providerHttpStatus: status };
+  }
+  if (status === 401) return { category: "authentication", providerHttpStatus: status };
+  if (status === 403) return { category: "permissions", providerHttpStatus: status };
+  if (status === 429) return { category: "quota", providerHttpStatus: status };
+  if (status === 404) return { category: "model", providerHttpStatus: status };
+  if (status === 400) return { category: "provider_request", providerHttpStatus: status };
+  return { category: "provider_error", providerHttpStatus: status };
+}
+
+function safeDiagnosticLog(logger, diagnostic) {
+  try {
+    logger({ event: "llm_provider_failure", ...diagnostic });
+  } catch {
+    // Logging failure must not replace the public API error.
+  }
+}
+
 async function readLimitedBody(request) {
   const contentLength = Number(request.headers.get("content-length"));
   if (Number.isFinite(contentLength) && contentLength > MAX_REQUEST_BYTES) {
@@ -94,7 +147,8 @@ async function readLimitedBody(request) {
 
 export function createExplainHandler({
   apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY,
-  generate = generateWithGoogle
+  generate = generateWithGoogle,
+  logger = (entry) => console.warn(entry)
 } = {}) {
   return async function handleExplain(request) {
     if (request.method !== "POST") {
@@ -136,11 +190,34 @@ export function createExplainHandler({
       }, 503);
     }
 
+    let generated;
     try {
-      const explanation = explanationSchema.parse(await generate({
+      generated = await generate({
         apiKey,
         context: caseContext(parsed.data.caseId)
-      }));
+      });
+    } catch (error) {
+      const diagnostic = classifyProviderFailure(error);
+      safeDiagnosticLog(logger, diagnostic);
+      return jsonResponse({
+        error: "No se pudo obtener una explicación real del modelo. La explicación fija se muestra como simulada.",
+        diagnostic
+      }, 502);
+    }
+
+    let explanation;
+    try {
+      explanation = explanationSchema.parse(generated);
+    } catch {
+      const diagnostic = { category: "response_validation", providerHttpStatus: null };
+      safeDiagnosticLog(logger, diagnostic);
+      return jsonResponse({
+        error: "La respuesta del modelo no cumplió el formato esperado. La explicación fija se muestra como simulada.",
+        diagnostic
+      }, 502);
+    }
+
+    try {
       return jsonResponse({
         status: "ok",
         source: "model",
@@ -149,8 +226,11 @@ export function createExplainHandler({
         explanation
       }, 200);
     } catch {
+      const diagnostic = { category: "provider_error", providerHttpStatus: null };
+      safeDiagnosticLog(logger, diagnostic);
       return jsonResponse({
-        error: "No se pudo obtener una explicación real del modelo. La explicación fija se muestra como simulada."
+        error: "No se pudo procesar la explicación real del modelo. La explicación fija se muestra como simulada.",
+        diagnostic
       }, 502);
     }
   };

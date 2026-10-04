@@ -61,3 +61,14 @@ La prueba automatizada verifica la función de estado usada por ambos bloques. L
 - `npm test`: 15/15 pruebas aprobadas, incluidas las pruebas de seguridad/errores del endpoint.
 - `npm run build`: Vite v7.3.6 generó `dist/`; `git diff --check` pasó.
 - No se hizo una llamada real a Gemini porque este entorno no tiene `GOOGLE_GENERATIVE_AI_API_KEY`. El éxito browser y el generador de las pruebas son mocks, no inferencia real.
+
+## Diagnóstico seguro 502
+
+Fecha de esta verificación: 4 de octubre de 2026.
+
+- Clasificación automatizada probada para HTTP 401/authentication, 403/permissions, 429/quota, 404/model, 400/provider_request, 503/provider_error, 408/504/timeout, AbortError/TimeoutError y error de objeto de respuesta/response_validation.
+- Prueba de handler: estado 503 se devuelve como HTTP 502 con diagnóstico `{ category: "provider_error", providerHttpStatus: 503 }`; el evento de servidor registra únicamente `event`, `category`, `providerHttpStatus`.
+- Prueba de timeout envuelto en `cause`: clasifica como `timeout`, estado nulo, sin imprimir texto sensible, URL, header ni causa.
+- La respuesta que falla el esquema se clasifica `response_validation`; el cliente mantiene error visible y alternativa “SIMULADA”.
+- `npm test`: 17/17 pruebas aprobadas. `npm run build`: Vite v7.3.6 generó `dist/`. `git diff --check`: sin errores.
+- No se accedió a logs de un deployment real ni se hizo llamada real al proveedor en esta sesión. En producción, consultar Vercel Project → **Logs** (o el deployment → **Functions** → `/api/explain`) y filtrar `llm_provider_failure`.

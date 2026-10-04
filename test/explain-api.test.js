@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createExplainHandler } from "../api/explain.js";
+import { classifyProviderFailure, createExplainHandler } from "../api/explain.js";
 
 function post(body, { origin = "https://aviso.test" } = {}) {
   return new Request("https://aviso.test/api/explain", {
@@ -72,9 +72,17 @@ test("missing server key returns a configuration error without a simulated succe
 });
 
 test("provider failure returns an API error, never a model-success label", async () => {
+  const logEntries = [];
   const handler = createExplainHandler({
     apiKey: "test-only-placeholder",
-    generate: async () => { throw new Error("simulated upstream failure"); }
+    logger: (entry) => logEntries.push(entry),
+    generate: async () => {
+      const error = new Error("test-only-placeholder https://private.example/key");
+      error.statusCode = 503;
+      error.headers = { authorization: "secret-header" };
+      error.url = "https://private.example/key";
+      throw error;
+    }
   });
 
   const response = await handler(post({ caseId: "aviso-02" }));
@@ -82,12 +90,21 @@ test("provider failure returns an API error, never a model-success label", async
 
   assert.equal(response.status, 502);
   assert.match(body.error, /no se pudo obtener/i);
+  assert.deepEqual(body.diagnostic, { category: "provider_error", providerHttpStatus: 503 });
   assert.equal("source" in body, false);
+  assert.deepEqual(logEntries, [{
+    event: "llm_provider_failure",
+    category: "provider_error",
+    providerHttpStatus: 503
+  }]);
+  assert.doesNotMatch(JSON.stringify(logEntries), /test-only-placeholder|private\.example|secret-header/);
 });
 
 test("provider output outside the three-field explanation schema is rejected", async () => {
+  const logEntries = [];
   const handler = createExplainHandler({
     apiKey: "test-only-placeholder",
+    logger: (entry) => logEntries.push(entry),
     generate: async () => ({
       knownFacts: "Facts",
       uncertainties: "Unknown",
@@ -98,6 +115,58 @@ test("provider output outside the three-field explanation schema is rejected", a
 
   const response = await handler(post({ caseId: "aviso-02" }));
   assert.equal(response.status, 502);
+  const body = await response.json();
+  assert.deepEqual(body.diagnostic, { category: "response_validation", providerHttpStatus: null });
+  assert.deepEqual(logEntries, [{
+    event: "llm_provider_failure",
+    category: "response_validation",
+    providerHttpStatus: null
+  }]);
+});
+
+test("provider failures map safe HTTP statuses and timeout names to categories", () => {
+  const cases = [
+    [{ statusCode: 401 }, "authentication", 401],
+    [{ statusCode: 403 }, "permissions", 403],
+    [{ statusCode: 429 }, "quota", 429],
+    [{ statusCode: 404 }, "model", 404],
+    [{ statusCode: 400 }, "provider_request", 400],
+    [{ statusCode: 503 }, "provider_error", 503],
+    [{ name: "TimeoutError" }, "timeout", null],
+    [{ name: "AbortError" }, "timeout", null],
+    [{ name: "AI_APICallError", cause: { name: "TimeoutError" } }, "timeout", null],
+    [{ statusCode: 504 }, "timeout", 504],
+    [{ name: "AI_NoObjectGeneratedError", statusCode: 200 }, "response_validation", 200]
+  ];
+
+  for (const [error, category, providerHttpStatus] of cases) {
+    assert.deepEqual(classifyProviderFailure(error), { category, providerHttpStatus });
+  }
+});
+
+test("timeout diagnostics log only the fixed category and nullable HTTP status", async () => {
+  const logEntries = [];
+  const handler = createExplainHandler({
+    apiKey: "test-only-placeholder",
+    logger: (entry) => logEntries.push(entry),
+    generate: async () => {
+      const error = new Error("sensitive timeout detail https://private.example/credential");
+      error.cause = { name: "TimeoutError", headers: { authorization: "secret" } };
+      throw error;
+    }
+  });
+
+  const response = await handler(post({ caseId: "aviso-02" }));
+  const body = await response.json();
+
+  assert.equal(response.status, 502);
+  assert.deepEqual(body.diagnostic, { category: "timeout", providerHttpStatus: null });
+  assert.deepEqual(logEntries, [{
+    event: "llm_provider_failure",
+    category: "timeout",
+    providerHttpStatus: null
+  }]);
+  assert.doesNotMatch(JSON.stringify(logEntries), /sensitive|private\.example|credential|secret/);
 });
 
 test("explain endpoint rejects oversized and malformed requests", async () => {

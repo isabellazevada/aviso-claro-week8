@@ -1,12 +1,12 @@
 # Aviso Claro · Decisiones de implementación
 
-Actualizado: 3 de octubre de 2026. Estado: prototipo local de demostración; no desplegado.
+Actualizado: 4 de octubre de 2026. Estado: prototipo local de demostración; no desplegado.
 
 ## Stack
 
 - Interfaz: HTML, CSS y JavaScript sin framework; Vite para desarrollo y compilación local.
 - Datos: tres fixtures ficticios en `src/data/incidents.json`; motivos de reporte y auditoría como opciones cerradas.
-- Seguridad: DOMPurify + `textContent` para no interpretar la salida como HTML; CSP de mismo origen en navegador; Zod valida el body estricto y la allowlist de IDs; el endpoint limita el body a 1 KiB mientras lee y rechaza `Origin` cruzado. Esto no autentica ni limita la tasa; el endpoint es público y puede consumir cuota.
+- Seguridad: DOMPurify + `textContent` para no interpretar la salida como HTML; CSP de mismo origen en navegador; Zod valida el body estricto y la allowlist de IDs; el endpoint limita el body a 1 KiB mientras lee y rechaza `Origin` cruzado. Diagnóstico en servidor usa solo categoría allowlist y estado HTTP entero. Esto no autentica ni limita la tasa; el endpoint es público y puede consumir cuota.
 - LLM: integración preparada con AI SDK y Google Gemini `gemini-3.8-flash` en Vercel Function Node (`api/explain.js`). Devuelve un objeto Zod estricto de tres campos: hechos conocidos, incertidumbres e instrucción preocupante. Solo recibe datos existentes del caso ficticio; no recibe acción siguiente, dictamen ni texto libre. No decide ni aprueba suspensiones/conservaciones.
 - Respuestas: UI distingue “Respuesta real del modelo · Google Gemini” de “Explicación fija · SIMULADA”. Si falta configuración o falla el endpoint, muestra el error y etiqueta la alternativa fija como simulada.
 - Secretos: `GOOGLE_GENERATIVE_AI_API_KEY` se configura solo en variables de entorno Vercel, nunca con prefijo `VITE_`, en código ni GitHub. `.env*` está ignorado. No hay clave disponible en este entorno, por lo que no se probó una llamada real.
@@ -28,8 +28,9 @@ Actualizado: 3 de octubre de 2026. Estado: prototipo local de demostración; no 
 Runtime temporal Node v22.16.0 en `/tmp`; no se instaló globalmente. La última `npm ci` instaló 28 paquetes y reportó cero vulnerabilidades en 29 paquetes auditados.
 
 - `npm ci`: instaló 28 paquetes; cero vulnerabilidades reportadas en 29 paquetes auditados.
-- `npm test`: 15/15 pruebas aprobadas, incluidas entrada inválida, clave ausente, fallas, límite streaming y esquema acotado de salida.
+- `npm test`: 17/17 pruebas aprobadas, incluyendo categorías/status HTTP, timeout envuelto y comprobaciones de que logs no contienen mensaje, URL ni encabezados.
 - `npm run build`: Vite v7.3.6 generó `dist/`; `git diff --check` pasó. No equivale a deployment ni a una llamada real a Gemini.
+- Diagnóstico 502: errores HTTP se asignan a `authentication`, `permissions`, `quota`, `model`, `provider_request` o `provider_error`; timeouts y respuesta incompatible quedan en `timeout` y `response_validation`. En logs solo se emiten evento fijo, categoría y estado HTTP; nunca mensaje, URL, encabezados ni objeto/cause. No se accedió a Vercel Logs reales; instrucciones en [DEPLOYMENT.md](DEPLOYMENT.md).
 - Se ejecutó de extremo a extremo `npm ci && npm test && npm run build`, igual que en Vercel. La configuración fija Node 22, `npm ci`, test antes de compilar, `dist` y cabeceras HTTP; no equivale a validar un deployment real. Pasos en [DEPLOYMENT.md](DEPLOYMENT.md).
 - Navegador a 390 px: flujo de reporte urgente → revisión → suspensión con motivo; se vio la corrección pendiente de 24 horas; 0 px de desbordamiento horizontal, 0 campos de texto/archivo y 0 errores de página.
 - Navegador a 320 px: reporte sin sustento no pudo suspender; se conservó con motivo; el formulario aceptó la selección corregida; 0 px de desbordamiento horizontal.

@@ -28,6 +28,12 @@ La pantalla marca por separado “Respuesta real del modelo · Google Gemini” 
 
 En el cliente, DOMPurify más `textContent` evita interpretar la respuesta como HTML; CSP limita scripts y conexiones del navegador a mismo origen. Zod valida tamaño, forma y allowlist del ID; el chequeo de `Origin` reduce solicitudes web cross-origin. Ninguna medida autentica a quien llama ni proporciona rate limiting: la función es pública y podría consumir cuota. Restringe la clave y configura cuota en Google; supervisa uso. Las cuotas/precios dependen de Google y de la cuenta, así que no se promete inferencia gratuita.
 
+### Diagnóstico de errores en Vercel
+
+Si `POST /api/explain` responde 502, abre el proyecto en Vercel → **Logs** (o el deployment afectado → **Functions** → `/api/explain`) y filtra por `llm_provider_failure`. Cada evento contiene únicamente `category` y `providerHttpStatus` además del nombre fijo del evento. Categorías: `authentication` (401), `permissions` (403), `quota` (429), `model` (404), `timeout` (408/504 o timeout/abort), `response_validation` (salida incompatible), `provider_request` (400) y `provider_error` (resto). Cuando no hay un estado HTTP, aparece `null`.
+
+El endpoint también devuelve ese diagnóstico seguro en el JSON 502 para facilitar depuración. El servidor no registra el error bruto, su mensaje/cause, clave, encabezados, URL ni cuerpo del proveedor. No cambies modelo a partir de un error sin verificar la categoría; consulta Vercel Logs y corrige credenciales/permisos/cuota o la configuración indicada.
+
 Para desarrollo, `npm run dev` sirve Vite pero no emula funciones `/api`; usa Vercel CLI (`vercel dev`) conectado al proyecto para probar la ruta allí. No publiques un `.env.local`; `.env*` está ignorado por Git. Sin clave, el endpoint devuelve error de configuración y la UI conserva solo la alternativa simulada.
 
 ## Estado y comprobaciones
